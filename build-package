@@ -41,14 +41,21 @@ find_latest() {
 #    IDEA_URL="http://confluence.jetbrains.net/display/IDEADEV/IDEA+13+EAP"
 #    IDEA_URL="http://confluence.jetbrains.net/display/IDEADEV/IDEA+13.1+EAP"
 #    IDEA_URL="http://confluence.jetbrains.net/display/IDEADEV/IDEA+14+EAP"
-    IDEA_URL="http://confluence.jetbrains.net/display/IDEADEV/IDEA+14.1+EAP"
+#    IDEA_URL="http://confluence.jetbrains.net/display/IDEADEV/IDEA+14.1+EAP"
+#    IDEA_URL="http://confluence.jetbrains.net/display/IDEADEV/IDEA+15+EAP"
+#    IDEA_URL="http://confluence.jetbrains.net/display/IDEADEV/IDEA+16+EAP"
+    IDEA_URL="https://confluence.jetbrains.com/display/IDEADEV/IDEA+2016.1+EAP"
   fi
 
+  export LC_ALL=C
+
   echo "Finding latest version from $IDEA_URL ..."
-  read url filename version skip_the_rest < <(wget --max-redirect 5 -O - -q $IDEA_URL | LC_ALL=C sed -n -e "/.*\"\(http.*:\/\/.*\/idea$flavor-.*tar.gz\)\".*/ {
-    s,.*\"\(http.*:\/\/.*\/idea$flavor-.*tar.gz\)\".*,\1,p
-    s,.*\(ideaI.-[.0-9]*.tar.gz\).*,\1,p
-    s,.*-\([.0-9]*\).tar.gz,\1,p
+  read url filename version skip_the_rest < <(wget --max-redirect 5 -O - -q $IDEA_URL | \
+      sed -n -e 's,\(href=.[^ "]\),\n\1,gp' | \
+      sed -n -e 's,^href.*\(http[^ "]*\).*,\1,p' | sed -n "/tar.gz$/ {
+    s,\(http.*:\/\/.*\/idea$flavor-.*tar.gz\),\1,p
+    s,.*\(ideaI.-[.0-9].*.tar.gz\).*,\1,p
+    s,.*-\([.0-9].*\).tar.gz,\1,p
   }" | xargs)
 
   if [ -z "$url" -o -z "$filename" -o -z "$version" ]
@@ -95,6 +102,16 @@ Original idea.vmoptions:
   cp root/usr/share/jetbrains/intellij-idea/bin/idea.vmoptions $fn
   cat $fn | grep -v yjpagent > root/usr/share/jetbrains/intellij-idea/bin/idea.vmoptions
   rm $fn
+
+  # If idea.license is provided in the bin directory of intellij-idea, this
+  # license is applied to the genereated package. This allows to generate a
+  # certified package for the Ultimate edition of the IDE.
+  if [ -f "idea.license" ]
+  then
+    bin_dir="root/usr/share/jetbrains/intellij-idea/bin"
+    echo "Copy licence file to $bin_dir"
+    cp idea.license $bin_dir
+  fi
 }
 
 calculate_package_filename() {
